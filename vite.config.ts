@@ -1,23 +1,17 @@
-import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
+
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, '.', '');
-    return {
-      server: {
-        port: 3000,
-        host: '0.0.0.0',
-      },
-      plugins: [react()],
-      define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-      },
-      resolve: {
-        alias: {
-          '@': path.resolve(__dirname, '.'),
-        }
-      }
-    };
+export default defineConfig({
+  plugins: [react()],
+  // استخدام './' يجعل التطبيق يعمل على أي مسار فرعي في GitHub Pages
+  base: './',
+  define: {
+    // هذا يضمن أن 'process.env.API_KEY' يعمل داخل الكود عند البناء
+    'process.env.API_KEY': JSON.stringify(process.env.API_KEY)
+  },
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+  }
 });

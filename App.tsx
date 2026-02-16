@@ -5,13 +5,35 @@ import { fetchSheetData } from './services/sheetService';
 import RamadanWidget from './components/RamadanWidget';
 import OfferCard from './components/OfferCard';
 import React, { useState, useEffect, useMemo } from 'react';
+import { GoogleGenAI } from "@google/genai";
 
 const App: React.FC = () => {
   const [data, setData] = useState<(AppData & { rawData?: any }) | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState("الكل");
-  const [showDebug, setShowDebug] = useState(false);
+  const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const generateAIInsight = async (offers: Offer[]) => {
+    if (!offers || offers.length === 0) return;
+    setAiLoading(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      const offersText = offers.slice(0, 10).map(o => `- ${o.title} (${o.price} ${o.currency}) في متجر ${o.storeName}`).join('\n');
+      
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `أنت مساعد تسوق ذكي لخبير في عروض رمضان. إليك قائمة بعروض اليوم:\n${offersText}\n\nقدم نصيحة شرائية قصيرة جداً (جملتين بحد أقصى) وبلهجة ودودة تشجع على التوفير والاستعداد لرمضان. ركز على أفضل قيمة مقابل السعر.`,
+      });
+      
+      setAiInsight(response.text || null);
+    } catch (err) {
+      console.error("AI Insight Error:", err);
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -19,6 +41,9 @@ const App: React.FC = () => {
     try {
       const result = await fetchSheetData(DEFAULT_SHEET_ID);
       setData(result);
+      if (result.offers.length > 0) {
+        generateAIInsight(result.offers);
+      }
     } catch (err: any) {
       setError(err.message || "فشل الاتصال بجدول البيانات");
     } finally {
@@ -47,7 +72,7 @@ const App: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 font-sans" dir="rtl">
         <div className="flex flex-col items-center gap-4">
           <div className="w-16 h-16 border-4 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-xl font-bold text-blue-900 text-center px-4">جاري جلب البيانات...</p>
+          <p className="text-xl font-bold text-blue-900 text-center px-4">جاري جلب عروض الخير...</p>
         </div>
       </div>
     );
@@ -62,8 +87,7 @@ const App: React.FC = () => {
             <h1 className="text-2xl font-black text-blue-900">عروض رمضان الخير</h1>
           </div>
           <div className="flex gap-2">
-             <button onClick={() => setShowDebug(!showDebug)} className="bg-slate-100 text-slate-600 px-4 py-2 rounded-xl text-xs font-bold border border-slate-200">فحص 🔍</button>
-             <button onClick={loadData} className="bg-amber-100 text-amber-800 px-4 py-2 rounded-xl text-sm font-bold border border-amber-200">تحديث ⚡</button>
+             <button onClick={loadData} className="bg-amber-100 text-amber-800 px-4 py-2 rounded-xl text-sm font-bold border border-amber-200 hover:bg-amber-200 transition-all active:scale-95">تحديث ⚡</button>
           </div>
         </div>
       </header>
@@ -71,6 +95,29 @@ const App: React.FC = () => {
       <main className="max-w-7xl mx-auto px-4 mt-8">
         {data && <RamadanWidget startDate={data.config.ramadanStartDate} dua={data.config.dailyDua} />}
         
+        {/* قسم ذكاء العروض - مدعوم بـ AI */}
+        {(aiInsight || aiLoading) && (
+          <section className="mb-10 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-3xl p-6 shadow-sm overflow-hidden relative group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-blue-900 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-lg">
+                <span className="text-2xl">💡</span>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-blue-900 font-black text-lg mb-1 flex items-center gap-2">
+                  إضاءة رمضانية ذكية
+                  <span className="text-[10px] bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full font-bold uppercase">AI</span>
+                </h3>
+                {aiLoading ? (
+                  <div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse mt-2"></div>
+                ) : (
+                  <p className="text-blue-800/80 leading-relaxed font-medium">{aiInsight}</p>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
         {error && (
           <div className="bg-red-50 border-r-4 border-red-500 p-4 mb-8 text-red-800 rounded-lg">
             حدث خطأ: {error}
@@ -82,7 +129,7 @@ const App: React.FC = () => {
             <span className="w-2 h-8 bg-amber-400 rounded-full"></span>
             عرض اليوم المتميز
           </h2>
-          {featuredOffer ? <OfferCard offer={featuredOffer} featured /> : <div className="text-center p-10 bg-white rounded-3xl text-gray-400">لا توجد عروض متميزة حالياً</div>}
+          {featuredOffer ? <OfferCard offer={featuredOffer} featured /> : <div className="text-center p-10 bg-white rounded-3xl text-gray-400 border border-dashed">لا توجد عروض متميزة حالياً</div>}
         </section>
 
         <section className="mb-12">
@@ -91,7 +138,7 @@ const App: React.FC = () => {
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`px-6 py-3 rounded-2xl whitespace-nowrap font-bold transition-all ${activeCategory === cat ? 'bg-blue-900 text-white shadow-lg' : 'bg-white text-gray-600 border border-gray-200'}`}
+                className={`px-6 py-3 rounded-2xl whitespace-nowrap font-bold transition-all ${activeCategory === cat ? 'bg-blue-900 text-white shadow-lg scale-105' : 'bg-white text-gray-600 border border-gray-200 hover:border-blue-300'}`}
               >
                 {cat}
               </button>
@@ -108,62 +155,6 @@ const App: React.FC = () => {
             </div>
           )}
         </section>
-
-        {showDebug && data && (
-          <section className="mt-20 p-6 bg-slate-900 text-green-400 rounded-3xl overflow-hidden shadow-2xl font-mono text-xs border-t-4 border-blue-500">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-bold text-white">تحليل البيانات (Debug Mode):</h3>
-              <button onClick={() => setShowDebug(false)} className="text-slate-400">إغلاق ×</button>
-            </div>
-            
-            <div className="space-y-6">
-              {/* رسالة تنبيه ذكية */}
-              {data.rawData?.configHeaders?.includes('id') && (
-                <div className="bg-amber-900/50 border border-amber-500 p-4 rounded-xl text-amber-200 text-sm mb-4">
-                  <strong>⚠️ تنبيه هام:</strong> ورقة "Config" ترجع بيانات "Offers". 
-                  <br /> يرجى التأكد من "نشر المستند بأكمله" من إعدادات جوجل شيت، وليس ورقة واحدة فقط.
-                </div>
-              )}
-
-              <div className="p-4 bg-slate-800 rounded-xl border border-slate-700">
-                <p className="text-blue-300 font-bold mb-2">عناوين الأعمدة في ورقة الإعدادات:</p>
-                <div className="flex flex-wrap gap-2">
-                   {data.rawData?.configHeaders?.map((h: string) => (
-                     <span key={h} className={`px-2 py-1 rounded border ${h.toLowerCase().includes('dua') || h.includes('دعاء') ? 'bg-green-900 border-green-500 text-white' : 'bg-slate-700 border-slate-600'}`}>
-                        "{h}"
-                     </span>
-                   ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <p className="text-blue-300 font-bold mb-2">// القيم النهائية:</p>
-                  <pre className="bg-slate-800 p-4 rounded-xl overflow-x-auto border border-slate-700">
-                    {JSON.stringify(data.config, null, 2)}
-                  </pre>
-                </div>
-                <div>
-                  <p className="text-pink-300 font-bold mb-2">// محتوى ورقة الإعدادات الخام:</p>
-                  <div className="bg-slate-800 p-4 rounded-xl overflow-x-auto border border-slate-700 h-64 overflow-y-auto text-[10px]">
-                    {data.rawData?.configRows?.slice(0, 3).map((row: any, i: number) => (
-                      <div key={i} className="mb-4 pb-2 border-b border-slate-700 last:border-0">
-                        <p className="text-gray-500 mb-1">الصف {i+1}:</p>
-                        {Object.entries(row).map(([key, val]) => (
-                          <div key={key} className="flex justify-between gap-4">
-                            {/* Fix: casting variables to String to ensure they are valid ReactNodes in debug output */}
-                            <span className="text-amber-400">"{String(key)}"</span>
-                            <span className="text-green-300 text-left">"{String(val)}"</span>
-                          </div>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
       </main>
     </div>
   );
