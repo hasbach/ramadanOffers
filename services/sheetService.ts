@@ -103,47 +103,44 @@ function getCsvUrl(idOrUrl: string, sheetName: string): string {
 
 export async function fetchSheetData(sheetId: string): Promise<{ offers: Offer[], config: RamadanConfig, rawData?: any }> {
   try {
-    // 1. جلب ورقة العروض الأساسية
     const offersUrl = getCsvUrl(sheetId, 'Offers');
     const offersRes = await fetch(offersUrl, { cache: 'no-store' });
     const offersText = await offersRes.text();
     const rawOffers = parseCSV(offersText);
 
-    // 2. جلب ورقة الإعدادات
     const configUrl = getCsvUrl(sheetId, 'Config');
     const configRes = await fetch(configUrl, { cache: 'no-store' });
     const configText = await configRes.text();
     let rawConfig = parseCSV(configText);
 
-    // فحص ذكي: هل ورقة Config هي في الحقيقة ورقة Offers مكررة؟
     const isConfigDuplicated = rawConfig.length > 0 && getValueByKeys(rawConfig[0], ['id', 'title']).length > 0;
-    
-    // إذا كانت مكررة، نعتبر أن كل البيانات موجودة في ورقة واحدة (rawOffers)
     const dataSourceForConfig = isConfigDuplicated ? rawOffers : rawConfig;
 
-    const offers: Offer[] = rawOffers.map(item => ({
-      id: getValueByKeys(item, ['id', 'المعرف']),
-      title: getValueByKeys(item, ['title', 'العنوان', 'اسم العرض']),
-      description: getValueByKeys(item, ['description', 'الوصف']),
-      category: getValueByKeys(item, ['category', 'الفئة']) || 'عام',
-      price: getValueByKeys(item, ['price', 'السعر']),
-      currency: getValueByKeys(item, ['currency', 'العملة']) || 'ر.س',
-      originalPrice: getValueByKeys(item, ['originalPrice', 'السعر السابق']),
-      storeName: getValueByKeys(item, ['storeName', 'المتجر', 'اسم المتجر']),
-      whatsapp: getValueByKeys(item, ['whatsapp', 'واتساب']),
-      imageUrl: getValueByKeys(item, ['imageUrl', 'الصورة']) || 'https://via.placeholder.com/400x300',
-      isFeatured: getValueByKeys(item, ['isFeatured', 'مميز']).toLowerCase() === 'true' || getValueByKeys(item, ['isFeatured', 'مميز']) === 'نعم' || getValueByKeys(item, ['isFeatured', 'مميز']) === '1',
-      expiryDate: getValueByKeys(item, ['expiryDate', 'تاريخ الانتهاء'])
-    }));
+    const offers: Offer[] = rawOffers.map((item, index) => {
+      const featuredVal = getValueByKeys(item, ['isFeatured', 'مميز', 'featured', 'متميز']).toLowerCase();
+      const idFromSheet = getValueByKeys(item, ['id', 'المعرف', 'كود']);
+      
+      return {
+        // إذا كان المعرف فارغاً، نستخدم رقم الصف لضمان ظهور كل العناصر في React
+        id: idFromSheet || `row-${index}`,
+        title: getValueByKeys(item, ['title', 'العنوان', 'اسم العرض']),
+        description: getValueByKeys(item, ['description', 'الوصف']),
+        category: getValueByKeys(item, ['category', 'الفئة']) || 'عام',
+        price: getValueByKeys(item, ['price', 'السعر']),
+        currency: getValueByKeys(item, ['currency', 'العملة']) || 'ر.س',
+        originalPrice: getValueByKeys(item, ['originalPrice', 'السعر السابق']),
+        storeName: getValueByKeys(item, ['storeName', 'المتجر', 'اسم المتجر']),
+        whatsapp: getValueByKeys(item, ['whatsapp', 'واتساب']),
+        imageUrl: getValueByKeys(item, ['imageUrl', 'الصورة']) || 'https://via.placeholder.com/400x300',
+        isFeatured: featuredVal === 'true' || featuredVal === 'yes' || featuredVal === 'نعم' || featuredVal === '1',
+        expiryDate: getValueByKeys(item, ['expiryDate', 'تاريخ الانتهاء'])
+      };
+    });
 
     const todayStr = normalizeDate(new Date());
-    
-    // استخراج تاريخ بداية رمضان
     let ramadanStartDate = getValueByKeys(dataSourceForConfig[0], ['ramadanStartDate', 'تاريخ رمضان', 'بداية']) || '2026-02-15';
 
     let dailyDua = '';
-    
-    // البحث عن الدعاء بناءً على التاريخ
     const duaMatch = dataSourceForConfig.find(row => {
       const rowDate = normalizeDate(getValueByKeys(row, ['date', 'التاريخ', 'اليوم']));
       return rowDate === todayStr || (rowDate && isSameDayMonth(rowDate, todayStr));
@@ -153,7 +150,6 @@ export async function fetchSheetData(sheetId: string): Promise<{ offers: Offer[]
       dailyDua = getValueByKeys(duaMatch, ['dailyDua', 'الدعاء', 'دعاء', 'نص']);
     }
 
-    // إذا لم نجد دعاء مرتبط بالتاريخ، نأخذ أي نص دعاء متاح في العمود
     if (!dailyDua) {
       const anyDua = dataSourceForConfig.find(row => getValueByKeys(row, ['dailyDua', 'الدعاء', 'دعاء']).length > 3);
       if (anyDua) {

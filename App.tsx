@@ -19,7 +19,13 @@ const App: React.FC = () => {
     if (!offers || offers.length === 0) return;
     setAiLoading(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      const apiKey = process.env.API_KEY;
+      if (!apiKey) {
+        setAiLoading(false);
+        return;
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
       const offersText = offers.slice(0, 10).map(o => `- ${o.title} (${o.price} ${o.currency}) في متجر ${o.storeName}`).join('\n');
       
       const response = await ai.models.generateContent({
@@ -41,24 +47,29 @@ const App: React.FC = () => {
     try {
       const result = await fetchSheetData(DEFAULT_SHEET_ID);
       setData(result);
-      if (result.offers.length > 0) {
+      if (result.offers && result.offers.length > 0) {
         generateAIInsight(result.offers);
       }
     } catch (err: any) {
+      console.error("Fetch Data Error:", err);
       setError(err.message || "فشل الاتصال بجدول البيانات");
     } finally {
       setLoading(false);
     }
   };
 
- const featuredOffers = useMemo(() => {
-    if (!data || data.offers.length === 0) return [];
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const featuredOffers = useMemo(() => {
+    if (!data || !data.offers || data.offers.length === 0) return [];
     const featured = data.offers.filter(o => o.isFeatured);
     return featured.length > 0 ? featured : [data.offers[0]];
   }, [data]);
 
   const filteredOffers = useMemo(() => {
-    if (!data) return [];
+    if (!data || !data.offers) return [];
     let list = data.offers;
     if (activeCategory === "الكل") return list;
     return list.filter(o => o.category === activeCategory);
@@ -92,7 +103,6 @@ const App: React.FC = () => {
       <main className="max-w-7xl mx-auto px-4 mt-8">
         {data && <RamadanWidget startDate={data.config.ramadanStartDate} dua={data.config.dailyDua} />}
         
-        {/* قسم ذكاء العروض - مدعوم بـ AI */}
         {(aiInsight || aiLoading) && (
           <section className="mb-10 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-3xl p-6 shadow-sm overflow-hidden relative group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
@@ -122,22 +132,23 @@ const App: React.FC = () => {
         )}
 
         <section className="mb-16">
-		  <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-			<span className="w-2 h-8 bg-amber-400 rounded-full"></span>
-			عرض اليوم المتميز
-		  </h2>
-		  {featuredOffers.length > 0 ? (
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-			  {featuredOffers.map(offer => (
-				<OfferCard key={offer.id} offer={offer} featured />
-			  ))}
-			</div>
-		  ) : (
-			<div className="text-center p-10 bg-white rounded-3xl text-gray-400 border border-dashed">
-			  لا توجد عروض متميزة حالياً
-			</div>
-		  )}
-		</section>
+          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <span className="w-2 h-8 bg-amber-400 rounded-full"></span>
+            عروض اليوم المتميزة
+          </h2>
+          {featuredOffers.length > 0 ? (
+            <div className="flex flex-col gap-8">
+              {featuredOffers.map(offer => (
+                <OfferCard key={offer.id} offer={offer} featured />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center p-10 bg-white rounded-3xl text-gray-400 border border-dashed">
+              لا توجد عروض متميزة حالياً
+            </div>
+          )}
+        </section>
+
         <section className="mb-12">
           <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar">
             {CATEGORIES.map(cat => (
