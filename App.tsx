@@ -51,13 +51,10 @@ const App: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const featuredOffer = useMemo(() => {
-    if (!data || data.offers.length === 0) return null;
-    return data.offers.find(o => o.isFeatured) || data.offers[0];
+ const featuredOffers = useMemo(() => {
+    if (!data || data.offers.length === 0) return [];
+    const featured = data.offers.filter(o => o.isFeatured);
+    return featured.length > 0 ? featured : [data.offers[0]];
   }, [data]);
 
   const filteredOffers = useMemo(() => {
@@ -125,13 +122,22 @@ const App: React.FC = () => {
         )}
 
         <section className="mb-16">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-            <span className="w-2 h-8 bg-amber-400 rounded-full"></span>
-            عرض اليوم المتميز
-          </h2>
-          {featuredOffer ? <OfferCard offer={featuredOffer} featured /> : <div className="text-center p-10 bg-white rounded-3xl text-gray-400 border border-dashed">لا توجد عروض متميزة حالياً</div>}
-        </section>
-
+		  <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+			<span className="w-2 h-8 bg-amber-400 rounded-full"></span>
+			عرض اليوم المتميز
+		  </h2>
+		  {featuredOffers.length > 0 ? (
+			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+			  {featuredOffers.map(offer => (
+				<OfferCard key={offer.id} offer={offer} featured />
+			  ))}
+			</div>
+		  ) : (
+			<div className="text-center p-10 bg-white rounded-3xl text-gray-400 border border-dashed">
+			  لا توجد عروض متميزة حالياً
+			</div>
+		  )}
+		</section>
         <section className="mb-12">
           <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar">
             {CATEGORIES.map(cat => (
