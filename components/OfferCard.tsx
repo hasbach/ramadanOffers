@@ -5,15 +5,16 @@ import { Offer } from '../types';
 interface Props {
   offer: Offer;
   featured?: boolean;
+  onClick?: () => void;
 }
 
-const OfferCard: React.FC<Props> = ({ offer, featured = false }) => {
-  const handleWhatsApp = () => {
+const OfferCard: React.FC<Props> = ({ offer, featured = false, onClick }) => {
+  const handleWhatsApp = (e: React.MouseEvent) => {
+    e.stopPropagation(); // منع فتح النافذة المنبثقة عند الضغط على الزر
     const text = `السلام عليكم، مهتم بعرض: ${offer.title} من متجر ${offer.storeName}`;
     window.open(`https://wa.me/${offer.whatsapp}?text=${encodeURIComponent(text)}`, '_blank');
   };
 
-  // تنسيق عرض السعر مع العملة
   const PriceDisplay = ({ size = "normal" }: { size?: "normal" | "large" }) => (
     <div className="flex items-baseline gap-2">
       <span className={`${size === "large" ? "text-4xl font-black" : "text-2xl font-bold"} text-blue-900`}>
@@ -27,7 +28,10 @@ const OfferCard: React.FC<Props> = ({ offer, featured = false }) => {
 
   if (featured) {
     return (
-      <div className="bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col lg:flex-row border-2 border-amber-200 group">
+      <div 
+        onClick={onClick}
+        className="bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col lg:flex-row border-2 border-amber-200 group cursor-pointer hover:border-amber-400 transition-all"
+      >
         <div className="lg:w-1/2 relative h-64 lg:h-auto overflow-hidden">
           <img 
             src={offer.imageUrl} 
@@ -41,7 +45,6 @@ const OfferCard: React.FC<Props> = ({ offer, featured = false }) => {
         <div className="lg:w-1/2 p-8 flex flex-col justify-center">
           <div className="flex justify-between items-start mb-2">
              <div className="text-amber-600 font-bold uppercase tracking-wide">{offer.category}</div>
-             {/* اسم المتجر بشكل بارز جداً في العرض المميز */}
              <div className="bg-amber-50 text-amber-800 px-4 py-1 rounded-full text-sm font-black border border-amber-100 flex items-center gap-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
                 {offer.storeName}
@@ -50,7 +53,7 @@ const OfferCard: React.FC<Props> = ({ offer, featured = false }) => {
           
           <h3 className="text-3xl font-bold text-gray-800 mb-4">{offer.title}</h3>
           
-          <p className="text-gray-600 mb-6 text-lg leading-relaxed">{offer.description}</p>
+          <p className="text-gray-600 mb-6 text-lg leading-relaxed line-clamp-3">{offer.description}</p>
           
           <div className="flex items-center gap-4 mb-8">
             <PriceDisplay size="large" />
@@ -62,19 +65,6 @@ const OfferCard: React.FC<Props> = ({ offer, featured = false }) => {
           </div>
 
           <div className="flex flex-col gap-4">
-            {/* إبراز اسم المتجر مرة أخرى بجانب الأزرار بشكل كبير */}
-            <div className="bg-blue-50 border border-blue-100 p-5 rounded-2xl flex items-center justify-between shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-blue-900 rounded-xl flex items-center justify-center text-white shadow-md">
-                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                </div>
-                <div>
-                  <span className="text-xs text-blue-700/60 block font-bold uppercase tracking-tighter">متجر العرض</span>
-                  <span className="text-2xl font-black text-blue-900">{offer.storeName}</span>
-                </div>
-              </div>
-            </div>
-
             <button 
               onClick={handleWhatsApp}
               className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-5 px-6 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-green-100 text-xl"
@@ -89,7 +79,10 @@ const OfferCard: React.FC<Props> = ({ offer, featured = false }) => {
   }
 
   return (
-    <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all border border-gray-100 flex flex-col h-full group">
+    <div 
+      onClick={onClick}
+      className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all border border-gray-100 flex flex-col h-full group cursor-pointer"
+    >
       <div className="relative h-48 overflow-hidden">
         <img 
           src={offer.imageUrl} 
@@ -103,7 +96,6 @@ const OfferCard: React.FC<Props> = ({ offer, featured = false }) => {
       <div className="p-5 flex flex-col flex-grow">
         <h4 className="text-xl font-bold text-gray-800 mb-2 line-clamp-1">{offer.title}</h4>
         
-        {/* اسم المتجر بحجم أكبر ووضوح أكثر في البطاقة العادية */}
         <div className="mb-3 flex items-center gap-2">
            <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center text-amber-700">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>

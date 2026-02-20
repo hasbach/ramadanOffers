@@ -4,6 +4,7 @@ import { DEFAULT_SHEET_ID, CATEGORIES } from './constants';
 import { fetchSheetData } from './services/sheetService';
 import RamadanWidget from './components/RamadanWidget';
 import OfferCard from './components/OfferCard';
+import OfferModal from './components/OfferModal';
 import React, { useState, useEffect, useMemo } from 'react';
 import { GoogleGenAI } from "@google/genai";
 
@@ -14,6 +15,7 @@ const App: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState("الكل");
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
 
   const generateAIInsight = async (offers: Offer[]) => {
     if (!offers || offers.length === 0) return;
@@ -139,7 +141,7 @@ const App: React.FC = () => {
           {featuredOffers.length > 0 ? (
             <div className="flex flex-col gap-8">
               {featuredOffers.map(offer => (
-                <OfferCard key={offer.id} offer={offer} featured />
+                <OfferCard key={offer.id} offer={offer} featured onClick={() => setSelectedOffer(offer)} />
               ))}
             </div>
           ) : (
@@ -165,7 +167,9 @@ const App: React.FC = () => {
 
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredOffers.length > 0 ? (
-            filteredOffers.map(offer => <OfferCard key={offer.id} offer={offer} />)
+            filteredOffers.map(offer => (
+              <OfferCard key={offer.id} offer={offer} onClick={() => setSelectedOffer(offer)} />
+            ))
           ) : (
             <div className="col-span-full text-center py-20 bg-white rounded-3xl text-gray-400 border border-dashed">
                لا توجد عروض في هذه الفئة حالياً
@@ -173,6 +177,11 @@ const App: React.FC = () => {
           )}
         </section>
       </main>
+
+      {/* نافذة التفاصيل المنبثقة */}
+      {selectedOffer && (
+        <OfferModal offer={selectedOffer} onClose={() => setSelectedOffer(null)} />
+      )}
     </div>
   );
 };
